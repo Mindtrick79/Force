@@ -1,8 +1,8 @@
 import json
 import os
 from dotenv import load_dotenv
-import openai
-from test_ollama import call_ollama
+from openai import OpenAI
+from .test_ollama import call_ollama
 
 TRAINING_DATA = [
     {
@@ -31,8 +31,8 @@ def fetch_example_from_chatgpt(prompt, api_key=None):
     if not api_key:
         print("No OpenAI API key found.")
         return None
-    openai.api_key = api_key
-    response = openai.ChatCompletion.create(
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are a helpful assistant for lead enrichment. Respond with only the ZIP, City, State as a comma-separated string."},
@@ -40,7 +40,7 @@ def fetch_example_from_chatgpt(prompt, api_key=None):
         ],
         max_tokens=50
     )
-    completion = response['choices'][0]['message']['content'].strip()
+    completion = response.choices[0].message.content.strip()
     return {"prompt": prompt, "completion": completion}
 
 def add_chatgpt_example():

@@ -5,6 +5,9 @@ import pandas as pd
 from dotenv import load_dotenv
 import openai
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 import re
 import subprocess
@@ -45,7 +48,7 @@ def call_google_maps(address, city, state, api_key):
                         return zip_code
         return None
     except Exception as e:
-        print(f"Google Maps API error: {e}")
+        logger.error("Google Maps API error: %s", e)
         return None
 
 def call_google_maps_full(address, city, state, zip_code, api_key):
@@ -69,7 +72,7 @@ def call_google_maps_full(address, city, state, zip_code, api_key):
             return zip_val, city_val, state_val
         return None, None, None
     except Exception as e:
-        print(f"Google Maps API error: {e}")
+        logger.error("Google Maps API error: %s", e)
         return None, None, None
 
 def get_col(row, options):
@@ -117,7 +120,7 @@ def enrich_zip(row, gmaps_key, openai_key, debug=False, log_file=None):
         # Logging
         log_entry = f"ENRICH ZIP: {address}, {city}, {state}\nResult: {row['Zip']} (Source: {source})\n{'-'*40}\n"
         if debug:
-            print(log_entry)
+            logger.info(log_entry.strip())
         if log_file:
             with open(log_file, 'a') as f:
                 f.write(log_entry)
@@ -139,7 +142,7 @@ def enrich_location(row, api_key, debug=False, log_file=None):
             result = call_openai(prompt, api_key)
             log_entry = f"PROMPT:\n{prompt}\nRESPONSE:\n{result}\n{'-'*40}\n"
             if debug:
-                print(log_entry)
+                logger.info(log_entry.strip())
             if log_file:
                 with open(log_file, 'a') as f:
                     f.write(log_entry)
@@ -155,7 +158,7 @@ def enrich_location(row, api_key, debug=False, log_file=None):
                 row['region'] = city
         except Exception as e:
             error_msg = f"AI enrichment failed: {e}\nPROMPT:\n{prompt}\n"
-            print(error_msg)
+            logger.error(error_msg.strip())
             if log_file:
                 with open(log_file, 'a') as f:
                     f.write(error_msg)
@@ -179,10 +182,10 @@ def call_ollama(prompt, model_name="mistral"):
         if proc.returncode == 0 and stdout:
             return stdout.strip()
         else:
-            print(f"Ollama error: {stderr}")
+            logger.error("Ollama error: %s", stderr)
             return ""
     except Exception as e:
-        print(f"Ollama error: {e}")
+        logger.error("Ollama error: %s", e)
         return ""
 
 def enrich_row_full(row, gmaps_key, openai_key, debug=False, log_file=None):
@@ -229,7 +232,7 @@ def enrich_row_full(row, gmaps_key, openai_key, debug=False, log_file=None):
             source = 'Ollama' if updated else 'Not found'
             log_entry = f"ENRICH: {address}, {city}, {state}, {zip_val}\nResult: ZIP={get_col(row, zip_opts)}, City={get_col(row, city_opts)}, State={get_col(row, state_opts)} (Source: {source})\n{'-'*40}\n"
             if debug:
-                print(log_entry)
+                logger.info(log_entry.strip())
             if log_file:
                 with open(log_file, 'a') as f:
                     f.write(log_entry)
@@ -260,8 +263,8 @@ def enrich_and_sort(input_path, output_path):
     if zip_col:
         df = df.sort_values(by=zip_col, na_position='last')
     df.to_csv(output_path, index=False)
-    print(f"Enriched and sorted leads saved to {output_path}")
-    print(f"Sample:\n{df.head(3)}")
+    logger.info("Enriched and sorted leads saved to %s", output_path)
+    logger.info("Sample:\n%s", df.head(3))
 
 if __name__ == '__main__':
     input_csv = os.path.join(os.path.dirname(__file__), '../data/leads_cleaned.csv')
